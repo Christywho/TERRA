@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ thread.title }} - Terra Forums</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Inter', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <nav class="bg-white shadow-sm p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="{{ url_for('home') }}" class="text-2xl font-bold text-green-600">TERRA</a>
+            <div class="space-x-4 text-gray-600">
+                <a href="{{ url_for('home') }}" class="hover:text-green-600">Home</a>
+                <a href="{{ url_for('forums') }}" class="hover:text-green-600">Forums</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-6 py-8 max-w-4xl">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="p-4 mb-4 text-sm rounded-lg {{ 'bg-green-100 text-green-800' if category == 'success' else 'bg-red-100 text-red-800' }}" role="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Original Post -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-100 mb-8 overflow-hidden">
+            <div class="bg-gray-50 p-4 border-b border-gray-100 flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-800 font-bold uppercase">
+                        {{ thread.author[0] }}
+                    </div>
+                    <div>
+                        <div class="font-semibold text-gray-900">{{ thread.author }}</div>
+                        <div class="text-xs text-gray-500">{{ thread.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                    </div>
+                </div>
+                <span class="bg-gray-100 text-gray-800 text-xs px-3 py-1 rounded-full border">{{ thread.category }}</span>
+            </div>
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-gray-900 mb-4">{{ thread.title }}</h1>
+                <div class="text-gray-800 whitespace-pre-wrap">{{ thread.content }}</div>
+            </div>
+        </div>
+
+        <h3 class="text-lg font-bold text-gray-700 mb-4 border-b pb-2">Replies ({{ replies|length }})</h3>
+
+        <!-- Replies List -->
+        <div class="space-y-4 mb-8">
+            {% for reply in replies %}
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100 flex space-x-4">
+                <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-800 font-bold uppercase flex-shrink-0">
+                    {{ reply.author[0] }}
+                </div>
+                <div class="flex-grow">
+                    <div class="flex justify-between items-baseline mb-2">
+                        <span class="font-semibold text-gray-900">{{ reply.author }}</span>
+                        <span class="text-xs text-gray-500">{{ reply.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                    </div>
+                    <div class="text-gray-800 whitespace-pre-wrap">{{ reply.content }}</div>
+                </div>
+            </div>
+            {% endfor %}
+            
+            {% if not replies %}
+            <div class="text-center py-6 text-gray-500 italic">No replies yet.</div>
+            {% endif %}
+        </div>
+
+        <!-- Reply Form -->
+        {% if current_user.is_authenticated %}
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Leave a Reply</h3>
+            <form action="{{ url_for('new_reply', thread_id=thread._id) }}" method="POST">
+                <textarea name="content" rows="4" required placeholder="Type your response here..." class="shadow-sm border rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent mb-4"></textarea>
+                <div class="flex justify-end">
+                    <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition">Post Reply</button>
+                </div>
+            </form>
+        </div>
+        {% else %}
+        <div class="bg-gray-50 p-6 rounded-lg text-center border border-gray-200">
+            <p class="text-gray-700 mb-3">You must be logged in to reply to this thread.</p>
+            <a href="{{ url_for('login') }}" class="inline-block bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition">Login Now</a>
+        </div>
+        {% endif %}
+
+    </div>
+</body>
+</html>

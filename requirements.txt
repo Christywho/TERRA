@@ -1,0 +1,10 @@
+flask
+pandas
+numpy
+scikit-learn
+joblib
+flask-pymongo
+flask-bcrypt
+flask-login
+requests
+earthengine-api

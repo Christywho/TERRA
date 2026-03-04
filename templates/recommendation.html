@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crop Recommender | Project TERRA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        #map { height: 250px; width: 100%; border-radius: 0.5rem; margin-bottom: 1rem; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-gray-800 shadow-md p-6">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-3xl font-bold text-green-400 tracking-wider">PROJECT TERRA</h1>
+            <nav class="space-x-4">
+                <a href="/" class="text-gray-300 hover:text-white">Home</a>
+                <a href="/estimator" class="text-gray-300 hover:text-white">Yield Estimator</a>
+                <a href="/recommendation" class="text-green-400 border-b-2 border-green-400">Crop Recommender</a>
+                <a href="/logout" class="text-red-400 hover:text-red-300">Logout</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-6 flex-grow flex flex-col md:flex-row gap-8">
+        
+        <!-- Input Section -->
+        <section class="w-full md:w-1/2 bg-gray-800 rounded-xl shadow-lg p-6">
+            <h2 class="text-xl font-semibold mb-6 text-green-300 border-b border-gray-700 pb-2">Soil & Climate Inputs</h2>
+            
+            <div class="mb-4">
+                <label class="block text-sm text-gray-400 mb-1">Select Location (for Auto-Climate)</label>
+                <div id="map"></div>
+                <div class="flex gap-2">
+                    <input type="number" step="0.0001" id="latitude" class="w-1/2 bg-gray-700 text-white rounded p-2" placeholder="Latitude" readonly>
+                    <input type="number" step="0.0001" id="longitude" class="w-1/2 bg-gray-700 text-white rounded p-2" placeholder="Longitude" readonly>
+                </div>
+                <button type="button" id="fetchWeatherBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded mt-2 text-sm transition">
+                    Fetch Climate Data from Satellite
+                </button>
+            </div>
+
+            <form id="recommendForm" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Nitrogen (N)</label>
+                        <input type="number" id="N" class="w-full bg-gray-700 text-white rounded p-2 focus:ring-2 focus:ring-green-500 outline-none" placeholder="e.g. 90" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Phosphorus (P)</label>
+                        <input type="number" id="P" class="w-full bg-gray-700 text-white rounded p-2 focus:ring-2 focus:ring-green-500 outline-none" placeholder="e.g. 42" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Potassium (K)</label>
+                        <input type="number" id="K" class="w-full bg-gray-700 text-white rounded p-2 focus:ring-2 focus:ring-green-500 outline-none" placeholder="e.g. 43" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">pH Level</label>
+                        <input type="number" step="0.1" id="ph" class="w-full bg-gray-700 text-white rounded p-2 focus:ring-2 focus:ring-green-500 outline-none" placeholder="e.g. 6.5" required>
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-700 pt-4">
+                    <h3 class="text-sm font-bold text-gray-300 mb-2">Climate Data (Auto-filled or Manual)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Temp (°C)</label>
+                            <input type="number" step="0.1" id="temperature" class="w-full bg-gray-700 text-white rounded p-2" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Humidity (%)</label>
+                            <input type="number" step="0.1" id="humidity" class="w-full bg-gray-700 text-white rounded p-2" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Rainfall (mm)</label>
+                            <input type="number" step="0.1" id="rainfall" class="w-full bg-gray-700 text-white rounded p-2" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded transition duration-200 mt-4">
+                    Find Best Crop
+                </button>
+            </form>
+        </section>
+
+        <!-- Results Section -->
+        <section class="w-full md:w-1/2 flex flex-col justify-center items-center">
+            
+            <div id="loading" class="hidden animate-spin rounded-full h-16 w-16 border-b-4 border-green-500 mb-6"></div>
+
+            <div id="resultCard" class="hidden w-full max-w-md bg-gray-800 rounded-xl shadow-lg p-8 text-center border-t-8 border-green-500">
+                <h3 class="text-gray-400 uppercase tracking-widest text-sm mb-2">Recommended Crop</h3>
+                <h2 id="recommendedCrop" class="text-5xl font-extrabold text-green-300 mb-4 capitolize">--</h2>
+                <p class="text-gray-300">Based on your soil and local climate analysis, this crop offers the highest probability of success.</p>
+            </div>
+
+            <div class="mt-8 bg-gray-800 p-4 rounded-lg max-w-md w-full opacity-70">
+                <h4 class="font-bold text-gray-400 mb-2 text-sm">Why this works?</h4>
+                <p class="text-xs text-gray-500">Our AI analyzes historical data and real-time satellite telemetry (via Google Earth Engine) to match your soil profile with optimal crop requirements.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Initialize Map
+        var map = L.map('map').setView([20.5937, 78.9629], 5);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+        var marker = L.marker([20.5937, 78.9629], {draggable: true}).addTo(map);
+
+        function updateInputs(lat, lng) {
+            document.getElementById('latitude').value = lat.toFixed(4);
+            document.getElementById('longitude').value = lng.toFixed(4);
+        }
+
+        map.on('click', function(e) {
+            updateInputs(e.latlng.lat, e.latlng.lng);
+            marker.setLatLng(e.latlng);
+        });
+
+        marker.on('dragend', function(e) {
+            var pos = marker.getLatLng();
+            updateInputs(pos.lat, pos.lng);
+        });
+
+        // 1. Fetch Weather
+        document.getElementById('fetchWeatherBtn').addEventListener('click', async () => {
+             const lat = document.getElementById('latitude').value;
+             const lon = document.getElementById('longitude').value;
+             
+             if(!lat || !lon) { alert("Please select a location on the map."); return; }
+             
+             const btn = document.getElementById('fetchWeatherBtn');
+             btn.textContent = "Fetching Satellite Data...";
+             btn.disabled = true;
+             
+             try {
+                 const response = await fetch('/get_weather', {
+                     method: 'POST',
+                     headers: {'Content-Type': 'application/json'},
+                     body: JSON.stringify({latitude: lat, longitude: lon})
+                 });
+                 const data = await response.json();
+                 
+                 if(data.error) throw new Error(data.error);
+                 
+                 document.getElementById('temperature').value = data.temp.toFixed(1);
+                 document.getElementById('rainfall').value = data.rainfall.toFixed(1);
+                 document.getElementById('humidity').value = data.humidity.toFixed(1); // Mocked/calculated
+                 
+             } catch(e) {
+                 alert("Error fetching weather: " + e.message);
+             } finally {
+                 btn.textContent = "Fetch Climate Data from Satellite";
+                 btn.disabled = false;
+             }
+        });
+
+        // 2. Recommend
+        document.getElementById('recommendForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            document.getElementById('resultCard').classList.add('hidden');
+            document.getElementById('loading').classList.remove('hidden');
+
+            const payload = {
+                N: document.getElementById('N').value,
+                P: document.getElementById('P').value,
+                K: document.getElementById('K').value,
+                temperature: document.getElementById('temperature').value,
+                humidity: document.getElementById('humidity').value,
+                ph: document.getElementById('ph').value,
+                rainfall: document.getElementById('rainfall').value
+            };
+
+            try {
+                const response = await fetch('/recommend', {
+                     method: 'POST',
+                     headers: {'Content-Type': 'application/json'},
+                     body: JSON.stringify(payload)
+                 });
+                 const result = await response.json();
+                 
+                 if(result.recommended_crop) {
+                     document.getElementById('recommendedCrop').textContent = result.recommended_crop;
+                     document.getElementById('resultCard').classList.remove('hidden');
+                 } else {
+                     alert("Error: " + result.error);
+                 }
+            } catch(e) {
+                console.error(e);
+                alert("Prediction failed.");
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

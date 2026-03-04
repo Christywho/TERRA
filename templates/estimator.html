@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project TERRA | Crop Yield Prediction</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <style>
+
+        body { font-family: 'Inter', sans-serif; }
+        #map { height: 300px; width: 100%; border-radius: 0.5rem; margin-bottom: 1rem; }
+        .auth-buttons {
+
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 10; /* Ensure it's above other content */
+        }
+        .auth-buttons a {
+            margin-left: 10px;
+            text-decoration: none;
+            color: #333;
+            font-weight: bold;
+            padding: 5px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: #fff;
+        }
+        .auth-buttons a:hover {
+            background-color: #eee;
+        }
+        .auth-buttons span {
+            color: #fff; /* Adjust color for dark background */
+            margin-right: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-gray-800 shadow-md p-6">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-3xl font-bold text-green-400 tracking-wider">PROJECT TERRA</h1>
+            <p class="text-gray-400 text-sm">AI-Driven Crop Yield Optimization</p>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto p-6 flex-grow flex flex-col md:flex-row gap-8">
+        
+        <!-- Input Section -->
+        <section class="w-full md:w-1/3 bg-gray-800 rounded-xl shadow-lg p-6">
+            <h2 class="text-xl font-semibold mb-6 text-green-300 border-b border-gray-700 pb-2">Input Parameters</h2>
+            <form id="predictionForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Location Selection</label>
+                    <div id="map"></div>
+                    <button type="button" id="geoBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded mb-4 transition">
+                        Use My Current Location
+                    </button>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">Latitude</label>
+                            <input type="number" step="0.0001" id="latitude" class="w-full bg-gray-700 text-white rounded p-2 focus:ring-2 focus:ring-green-500 outline-none" placeholder="e.g. 20.5937" required>
+                        </div>
+                        <div>
+                             <label class="block text-sm text-gray-400 mb-1">Longitude</label>
+                             <input type="number" step="0.0001" id="longitude" class="w-full bg-gray-700 text-white rounded p-2 focus:ring-2 focus:ring-green-500 outline-none" placeholder="e.g. 78.9629" required>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Crop Type</label>
+                    <select id="cropType" class="w-full bg-gray-700 text-white rounded p-2 focus:ring-2 focus:ring-green-500 outline-none">
+                        <option value="wheat">Wheat</option>
+                        <option value="rice">Rice</option>
+                        <option value="corn">Corn</option>
+                        <option value="soybean">Soybean</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Target Yield (tons/ha)</label>
+                    <input type="number" step="0.1" id="targetYield" class="w-full bg-gray-700 text-white rounded p-2 focus:ring-2 focus:ring-green-500 outline-none" value="5.0">
+                </div>
+                
+                <button type="submit" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded transition duration-200 mt-4">
+                    Predict Yield
+                </button>
+            </form>
+        </section>
+
+        <!-- Results Section -->
+        <section class="w-full md:w-2/3 space-y-6">
+            
+            <!-- Result Card -->
+            <div id="resultCard" class="hidden bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-green-500">
+                <h2 class="text-2xl font-bold mb-2">Predicted Yield</h2>
+                <div class="flex items-baseline gap-2">
+                    <span id="yieldValue" class="text-5xl font-extrabold text-white">--</span>
+                    <span id="yieldUnit" class="text-xl text-gray-400">tons/ha</span>
+                </div>
+            </div>
+
+            <!-- Environmental Data Grid -->
+            <div id="envDataGrid" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Weather -->
+                <div class="bg-gray-800 p-4 rounded-lg">
+                    <h3 class="text-green-400 font-semibold mb-2">Weather</h3>
+                    <p class="text-sm text-gray-300">Temp: <span id="envTemp" class="font-bold">--</span> °C</p>
+                    <p class="text-sm text-gray-300">Rainfall: <span id="envRain" class="font-bold">--</span> mm</p>
+                </div>
+                <!-- Soil -->
+                <div class="bg-gray-800 p-4 rounded-lg">
+                    <h3 class="text-yellow-400 font-semibold mb-2">Soil</h3>
+                    <p class="text-sm text-gray-300">pH: <span id="envPh" class="font-bold">--</span></p>
+                    <p class="text-sm text-gray-300">Nitrogen: <span id="envN" class="font-bold">--</span> kg/ha</p>
+                </div>
+                <!-- Satellite -->
+                <div class="bg-gray-800 p-4 rounded-lg">
+                    <h3 class="text-blue-400 font-semibold mb-2">Satellite</h3>
+                    <p class="text-sm text-gray-300">NDVI: <span id="envNdvi" class="font-bold">--</span></p>
+                </div>
+            </div>
+
+            <!-- Recommendations -->
+            <div id="recommendationCard" class="hidden bg-gray-800 rounded-xl shadow-lg p-6">
+                <h3 class="text-xl font-semibold mb-4 text-blue-300">Optimization Recommendations</h3>
+                <ul id="recommendationList" class="list-disc list-inside space-y-2 text-gray-300">
+                    <!-- Dynamic Items -->
+                </ul>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading" class="hidden flex justify-center items-center py-20">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+            </div>
+
+        </section>
+    </main>
+
+    <footer class="bg-gray-900 border-t border-gray-800 text-center p-4 text-gray-600">
+        &copy; 2026 Project TERRA. All rights reserved.
+    </footer>
+
+    <script>
+        // Initialize Map
+        var map = L.map('map').setView([20.5937, 78.9629], 5); // Default to India center
+
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        var marker = L.marker([20.5937, 78.9629], {draggable: true}).addTo(map);
+
+        function updateInputs(lat, lng) {
+            document.getElementById('latitude').value = lat.toFixed(4);
+            document.getElementById('longitude').value = lng.toFixed(4);
+        }
+
+        function updateMarker(lat, lng) {
+            var newLatLng = new L.LatLng(lat, lng);
+            marker.setLatLng(newLatLng);
+            map.panTo(newLatLng);
+        }
+
+        // Map Click Event
+        map.on('click', function(e) {
+            var lat = e.latlng.lat;
+            var lng = e.latlng.lng;
+            updateInputs(lat, lng);
+            marker.setLatLng(e.latlng);
+        });
+
+        // Marker Drag Event
+        marker.on('dragend', function(e) {
+            var lat = marker.getLatLng().lat;
+            var lng = marker.getLatLng().lng;
+            updateInputs(lat, lng);
+        });
+
+        // Input Change Events
+        document.getElementById('latitude').addEventListener('change', function() {
+            updateMarker(this.value, document.getElementById('longitude').value);
+        });
+        document.getElementById('longitude').addEventListener('change', function() {
+            updateMarker(document.getElementById('latitude').value, this.value);
+        });
+
+        // ID Geolocation
+        document.getElementById('geoBtn').addEventListener('click', function() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    var lat = position.coords.latitude;
+                    var lng = position.coords.longitude;
+                    updateInputs(lat, lng);
+                    updateMarker(lat, lng);
+                    map.setView([lat, lng], 13);
+                }, function(error) {
+                    alert("Error getting location: " + error.message);
+                });
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+        });
+
+        document.getElementById('predictionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Show Loading, Hide Results
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('resultCard').classList.add('hidden');
+            document.getElementById('envDataGrid').classList.add('hidden');
+            document.getElementById('recommendationCard').classList.add('hidden');
+
+            const data = {
+                latitude: document.getElementById('latitude').value,
+                longitude: document.getElementById('longitude').value,
+                crop_type: document.getElementById('cropType').value,
+                target_yield: document.getElementById('targetYield').value
+            };
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+
+                if (response.ok) {
+                    // Update UI
+                    document.getElementById('yieldValue').textContent = result.predicted_yield;
+                    document.getElementById('yieldUnit').textContent = result.unit;
+                    
+                    document.getElementById('envTemp').textContent = result.environmental_data.weather.temp.toFixed(1);
+                    document.getElementById('envRain').textContent = result.environmental_data.weather.rainfall.toFixed(0);
+                    document.getElementById('envPh').textContent = result.environmental_data.soil.ph.toFixed(1);
+                    document.getElementById('envN').textContent = result.environmental_data.soil.nitrogen.toFixed(1);
+                    document.getElementById('envNdvi').textContent = result.environmental_data.satellite.ndvi.toFixed(2);
+                    
+                    const recList = document.getElementById('recommendationList');
+                    recList.innerHTML = '';
+                    result.recommendations.forEach(rec => {
+                        const li = document.createElement('li');
+                        li.textContent = rec;
+                        recList.appendChild(li);
+                    });
+
+                    // Show Results
+                    document.getElementById('resultCard').classList.remove('hidden');
+                    document.getElementById('envDataGrid').classList.remove('hidden');
+                    document.getElementById('recommendationCard').classList.remove('hidden');
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred during prediction.');
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

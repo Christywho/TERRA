@@ -6,9 +6,11 @@ from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from bson.objectid import ObjectId
 
+import os
+
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secret_key_here' # Change this in production
-app.config['MONGO_URI'] = 'mongodb://localhost:27017/terra_db'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your_secret_key_here') # Good practice for Render
+app.config['MONGO_URI'] = os.environ.get('MONGO_URI', 'mongodb://localhost:27017/terra_db')
 
 mongo = PyMongo(app)
 bcrypt = Bcrypt(app)

@@ -36,14 +36,17 @@
             <h2 class="text-xl font-semibold mb-6 text-green-300 border-b border-gray-700 pb-2">Soil & Climate Inputs</h2>
             
             <div class="mb-4">
-                <label class="block text-sm text-gray-400 mb-1">Select Location (for Auto-Climate)</label>
+                <label class="block text-sm text-gray-400 mb-1">Select Location</label>
                 <div id="map"></div>
+                <button type="button" id="geoBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded mb-4 transition">
+                    Use My Current Location
+                </button>
                 <div class="flex gap-2">
                     <input type="number" step="0.0001" id="latitude" class="w-1/2 bg-gray-700 text-white rounded p-2" placeholder="Latitude" readonly>
                     <input type="number" step="0.0001" id="longitude" class="w-1/2 bg-gray-700 text-white rounded p-2" placeholder="Longitude" readonly>
                 </div>
-                <button type="button" id="fetchWeatherBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded mt-2 text-sm transition">
-                    Fetch Climate Data from Satellite
+                <button type="button" id="fetchWeatherBtn" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded mt-2 text-sm transition">
+                    Auto-Fill Climate & Soil Data
                 </button>
             </div>
 
@@ -51,15 +54,15 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm text-gray-400 mb-1">Nitrogen (N)</label>
-                        <input type="number" id="N" class="w-full bg-gray-700 text-white rounded p-2 focus:ring-2 focus:ring-green-500 outline-none" placeholder="e.g. 90" required>
+                        <input type="number" step="0.01" id="N" class="w-full bg-gray-700 text-white rounded p-2 focus:ring-2 focus:ring-green-500 outline-none" placeholder="e.g. 90" required>
                     </div>
                     <div>
                         <label class="block text-sm text-gray-400 mb-1">Phosphorus (P)</label>
-                        <input type="number" id="P" class="w-full bg-gray-700 text-white rounded p-2 focus:ring-2 focus:ring-green-500 outline-none" placeholder="e.g. 42" required>
+                        <input type="number" step="0.01" id="P" class="w-full bg-gray-700 text-white rounded p-2 focus:ring-2 focus:ring-green-500 outline-none" placeholder="e.g. 42" required>
                     </div>
                     <div>
                         <label class="block text-sm text-gray-400 mb-1">Potassium (K)</label>
-                        <input type="number" id="K" class="w-full bg-gray-700 text-white rounded p-2 focus:ring-2 focus:ring-green-500 outline-none" placeholder="e.g. 43" required>
+                        <input type="number" step="0.01" id="K" class="w-full bg-gray-700 text-white rounded p-2 focus:ring-2 focus:ring-green-500 outline-none" placeholder="e.g. 43" required>
                     </div>
                     <div>
                         <label class="block text-sm text-gray-400 mb-1">pH Level</label>
@@ -131,7 +134,7 @@
             updateInputs(pos.lat, pos.lng);
         });
 
-        // 1. Fetch Weather
+        // 1. Fetch Weather and Soil
         document.getElementById('fetchWeatherBtn').addEventListener('click', async () => {
              const lat = document.getElementById('latitude').value;
              const lon = document.getElementById('longitude').value;
@@ -139,29 +142,64 @@
              if(!lat || !lon) { alert("Please select a location on the map."); return; }
              
              const btn = document.getElementById('fetchWeatherBtn');
-             btn.textContent = "Fetching Satellite Data...";
+             btn.textContent = "Fetching Satellite & Soil Data...";
              btn.disabled = true;
              
              try {
-                 const response = await fetch('/get_weather', {
-                     method: 'POST',
-                     headers: {'Content-Type': 'application/json'},
-                     body: JSON.stringify({latitude: lat, longitude: lon})
-                 });
-                 const data = await response.json();
+                 // Concurrently fetch weather and soil data
+                 const [weatherRes, soilRes] = await Promise.all([
+                     fetch('/get_weather', {
+                         method: 'POST',
+                         headers: {'Content-Type': 'application/json'},
+                         body: JSON.stringify({latitude: lat, longitude: lon})
+                     }),
+                     fetch('/get_soil', {
+                         method: 'POST',
+                         headers: {'Content-Type': 'application/json'},
+                         body: JSON.stringify({latitude: lat, longitude: lon})
+                     })
+                 ]);
+
+                 const weatherData = await weatherRes.json();
+                 const soilData = await soilRes.json();
                  
-                 if(data.error) throw new Error(data.error);
+                 if(weatherData.error) throw new Error("Weather API: " + weatherData.error);
+                 if(soilData.error) throw new Error("Soil API: " + soilData.error);
                  
-                 document.getElementById('temperature').value = data.temp.toFixed(1);
-                 document.getElementById('rainfall').value = data.rainfall.toFixed(1);
-                 document.getElementById('humidity').value = data.humidity.toFixed(1); // Mocked/calculated
+                 // Populate Climate Data
+                 document.getElementById('temperature').value = weatherData.temp.toFixed(1);
+                 document.getElementById('rainfall').value = weatherData.rainfall.toFixed(1);
+                 document.getElementById('humidity').value = weatherData.humidity.toFixed(1); // Mocked/calculated
+                 
+                 // Populate Soil Data
+                 document.getElementById('N').value = soilData.nitrogen.toFixed(1);
+                 document.getElementById('P').value = soilData.p.toFixed(1);
+                 document.getElementById('K').value = soilData.k.toFixed(1);
+                 document.getElementById('ph').value = soilData.ph.toFixed(2);
                  
              } catch(e) {
-                 alert("Error fetching weather: " + e.message);
+                 alert("Error fetching data: " + e.message);
              } finally {
-                 btn.textContent = "Fetch Climate Data from Satellite";
+                 btn.textContent = "Auto-Fill Climate & Soil Data";
                  btn.disabled = false;
              }
+        });
+
+        // Current Location via Geolocation
+        document.getElementById('geoBtn').addEventListener('click', function() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    var lat = position.coords.latitude;
+                    var lng = position.coords.longitude;
+                    updateInputs(lat, lng);
+                    marker.setLatLng([lat, lng]);
+                    map.setView([lat, lng], 13);
+                }, function(error) {
+                    alert("Error getting location: " + error.message);
+                });
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
         });
 
         // 2. Recommend

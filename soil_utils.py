@@ -55,7 +55,9 @@ def get_soil_data(lat, lon):
 
             return {
                 "nitrogen": nitrogen_val,
-                "ph": ph_val
+                "ph": ph_val,
+                "p": random.uniform(30, 60), # Mocked Phosphorus (P)
+                "k": random.uniform(30, 60)  # Mocked Potassium (K)
             }
         else:
             print(f"SoilGrids API returned status: {response.status_code}")
@@ -69,5 +71,7 @@ def _get_mock_soil_data():
     """Fallback mock data"""
     return {
         'ph': random.uniform(5.5, 7.5),
-        'nitrogen': random.uniform(50, 150) 
+        'nitrogen': random.uniform(50, 150),
+        'p': random.uniform(30, 60),
+        'k': random.uniform(30, 60)
     }

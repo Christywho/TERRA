@@ -344,5 +344,18 @@ def get_weather():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
+# Endpoint to fetch soil data for recommendation page autofill
+@app.route('/get_soil', methods=['POST'])
+def get_soil():
+    try:
+        data = request.json
+        lat = float(data.get('latitude'))
+        lon = float(data.get('longitude'))
+        
+        soil = get_soil_data(lat, lon)
+        return jsonify(soil)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
 if __name__ == '__main__':
     app.run(debug=True)

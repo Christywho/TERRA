@@ -9,10 +9,19 @@ from bson.objectid import ObjectId
 import os
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your_secret_key_here') # Good practice for Render
-app.config['MONGO_URI'] = os.environ.get('MONGO_URI', 'mongodb://localhost:27017/terra_db')
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your_secret_key_here')
 
-mongo = PyMongo(app)
+# The default URI points to local. If a cloud URI is provided, we must ensure it can connect securely.
+mongo_uri = os.environ.get('MONGO_URI', 'mongodb://localhost:27017/terra_db')
+app.config['MONGO_URI'] = mongo_uri
+
+# Initialize PyMongo. Atlas requires TLS, which PyMongo usually infers from the +srv schema,
+# but passing tlsAllowInvalidCertificates can help if Render's internal DNS acts up.
+try:
+    mongo = PyMongo(app, tlsAllowInvalidCertificates=True)
+except Exception as e:
+    print(f"PyMongo Initialization Error: {e}")
+    mongo = PyMongo(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'

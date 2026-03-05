@@ -44,20 +44,21 @@ class ModelLoader:
             if self._model is None:
                 raise ValueError("Yield Model not loaded.")
         
-        df = pd.DataFrame(columns=self._model_columns)
-        df.loc[0] = 0 
+        # Create a dictionary with default 0.0 values to avoid int64 casting errors
+        row_data = {col: 0.0 for col in self._model_columns}
         
-        df.at[0, 'average_rain_fall_mm_per_year'] = features.get('average_rain_fall_mm_per_year', 0)
-        df.at[0, 'avg_temp'] = features.get('avg_temp', 0)
-        df.at[0, 'pesticides_tonnes'] = features.get('pesticides_tonnes', 0)
+        row_data['average_rain_fall_mm_per_year'] = float(features.get('average_rain_fall_mm_per_year', 0.0))
+        row_data['avg_temp'] = float(features.get('avg_temp', 0.0))
+        row_data['pesticides_tonnes'] = float(features.get('pesticides_tonnes', 0.0))
         
         crop = features.get('crop_type')
         if crop:
             col_name = f"Item_{crop}"
-            if col_name in df.columns:
-                df.at[0, col_name] = 1
+            if col_name in row_data:
+                row_data[col_name] = 1.0
         
-        df = df[self._model_columns]
+        df = pd.DataFrame([row_data], columns=self._model_columns)
+        
         prediction = self._model.predict(df)
         return prediction[0]
 

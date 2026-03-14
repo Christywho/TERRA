@@ -48,6 +48,50 @@
             <div class="p-6">
                 <h1 class="text-2xl font-bold text-gray-900 mb-4">{{ thread.title }}</h1>
                 <div class="text-gray-800 whitespace-pre-wrap">{{ thread.content }}</div>
+                
+                {% if thread.poll %}
+                <div class="mt-8 bg-blue-50 border border-blue-100 rounded-lg p-6">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4">{{ thread.poll.question }}</h3>
+                    
+                    {% set user_voted = False %}
+                    {% if current_user.is_authenticated and current_user.id|string in thread.poll.voters %}
+                        {% set user_voted = True %}
+                    {% endif %}
+                    
+                    {% if not current_user.is_authenticated or user_voted %}
+                        <!-- Results View -->
+                        <div class="space-y-4">
+                            {% set total_votes = thread.poll.voters|length %}
+                            {% for option in thread.poll.options %}
+                                {% set percent = (option.votes / total_votes * 100)|round(1) if total_votes > 0 else 0 %}
+                                <div>
+                                    <div class="flex justify-between text-sm mb-1">
+                                        <span class="font-medium text-gray-800">{{ option.text }}</span>
+                                        <span class="text-gray-600">{{ percent }}% ({{ option.votes }} votes)</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                        <div class="bg-blue-600 h-2.5 rounded-full" style="width: {{ percent }}%"></div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                            <p class="text-sm text-gray-500 mt-4 text-right">Total Votes: {{ total_votes }}</p>
+                        </div>
+                    {% else %}
+                        <!-- Voting View -->
+                        <form action="{{ url_for('vote_poll', thread_id=thread._id) }}" method="POST">
+                            <div class="space-y-3 mb-4">
+                                {% for option in thread.poll.options %}
+                                <label class="flex items-center space-x-3 cursor-pointer">
+                                    <input type="radio" name="poll_option" value="{{ loop.index0 }}" required class="form-radio h-5 w-5 text-blue-600 border-gray-300 focus:ring-blue-500">
+                                    <span class="text-gray-800 font-medium">{{ option.text }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                            <button type="submit" class="bg-blue-600 font-bold text-white px-6 py-2 rounded hover:bg-blue-700 shadow transition transform hover:-translate-y-0.5">Vote</button>
+                        </form>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
         </div>
 

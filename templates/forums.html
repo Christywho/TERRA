@@ -87,6 +87,42 @@
                     <label class="block text-gray-700 text-sm font-bold mb-2">Content</label>
                     <textarea name="content" rows="6" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-green-500"></textarea>
                 </div>
+
+                <div class="border-t pt-4 mt-4">
+                    <h3 class="text-lg font-bold text-gray-800 mb-2 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        Create a Poll <span class="text-sm font-normal text-gray-500 ml-2">(Optional)</span>
+                    </h3>
+                    <div class="mb-3">
+                        <label class="block text-gray-700 text-sm mb-1">Poll Question</label>
+                        <input type="text" name="poll_question" placeholder="e.g. What is your preferred irrigation method?" class="shadow-sm border rounded w-full py-2 px-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm mb-1">Options</label>
+                        <div id="pollOptionsContainer" class="space-y-2">
+                            <div>
+                                <input type="text" name="poll_options[]" placeholder="Option 1" class="shadow-sm border rounded w-full py-2 px-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <input type="text" name="poll_options[]" placeholder="Option 2" class="shadow-sm border rounded w-full py-2 px-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                            </div>
+                        </div>
+                        <button type="button" onclick="addPollOption()" class="mt-2 flex items-center text-sm text-green-600 hover:text-green-800 font-semibold transition">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                            Add another option
+                        </button>
+                    </div>
+                </div>
+                
+                <script>
+                    function addPollOption() {
+                        const container = document.getElementById('pollOptionsContainer');
+                        const index = container.children.length + 1;
+                        const div = document.createElement('div');
+                        div.innerHTML = `<input type="text" name="poll_options[]" placeholder="Option ${index}" class="shadow-sm border rounded w-full py-2 px-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">`;
+                        container.appendChild(div);
+                    }
+                </script>
                 
                 <div class="flex justify-end pt-4">
                     <button type="button" onclick="document.getElementById('newThreadModal').classList.add('hidden')" class="bg-gray-300 text-gray-800 px-4 py-2 rounded mr-2 hover:bg-gray-400">Cancel</button>

@@ -159,20 +159,76 @@ def new_thread():
     category = request.form.get('category')
     content = request.form.get('content')
     
+    # Poll Data
+    poll_question = request.form.get('poll_question')
+    poll_options_raw = request.form.getlist('poll_options[]')
+    
+    poll = None
+    if poll_question and poll_options_raw:
+        valid_options = [opt.strip() for opt in poll_options_raw if opt.strip()]
+        if len(valid_options) >= 2:
+            poll = {
+                'question': poll_question,
+                'options': [{'text': opt, 'votes': 0} for opt in valid_options],
+                'voters': []
+            }
+    
     if title and category and content:
-        mongo.db.threads.insert_one({
+        thread_data = {
             'title': title,
             'category': category,
             'content': content,
             'author': current_user.username,
             'author_id': ObjectId(current_user.id),
             'created_at': datetime.utcnow()
-        })
+        }
+        if poll:
+            thread_data['poll'] = poll
+            
+        mongo.db.threads.insert_one(thread_data)
         flash('Thread created successfully!', 'success')
     else:
         flash('Please fill in all fields.', 'danger')
         
     return redirect(url_for('forums'))
+
+@app.route('/forums/thread/<thread_id>/vote', methods=['POST'])
+@login_required
+def vote_poll(thread_id):
+    try:
+        option_index = int(request.form.get('poll_option'))
+        
+        thread = mongo.db.threads.find_one({'_id': ObjectId(thread_id)})
+        if not thread or 'poll' not in thread:
+            flash('Poll not found.', 'danger')
+            return redirect(url_for('forums'))
+            
+        poll = thread['poll']
+        user_id_str = str(current_user.id)
+        
+        # Check if user already voted
+        if user_id_str in poll.get('voters', []):
+            flash('You have already voted on this poll.', 'warning')
+            return redirect(url_for('view_thread', thread_id=thread_id))
+            
+        if 0 <= option_index < len(poll['options']):
+            # Increment vote and add user to voters
+            mongo.db.threads.update_one(
+                {'_id': ObjectId(thread_id)},
+                {
+                    '$inc': {f'poll.options.{option_index}.votes': 1},
+                    '$push': {'poll.voters': user_id_str}
+                }
+            )
+            flash('Your vote has been recorded!', 'success')
+        else:
+            flash('Invalid poll option.', 'danger')
+            
+        return redirect(url_for('view_thread', thread_id=thread_id))
+    except Exception as e:
+        print(f"Error voting: {e}")
+        flash('An error occurred while voting.', 'danger')
+        return redirect(url_for('view_thread', thread_id=thread_id))
 
 @app.route('/forums/thread/<thread_id>')
 def view_thread(thread_id):

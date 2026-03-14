@@ -131,6 +131,10 @@ def home():
 def estimator_page():
     return render_template('estimator.html')
 
+@app.route('/contact')
+def contact():
+    return render_template('contact.html')
+
 @app.route('/recommendation')
 @login_required
 def recommendation_page():

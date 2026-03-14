@@ -3,7 +3,7 @@ from pymongo import MongoClient
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 
-MONGO_URI = "mongodb+srv://christeyrules333_db_user:HwQYWUiGYXxyjSed@terra.gqjr1ty.mongodb.net/terra_db?appName=TERRA"
+MONGO_URI = os.environ.get('MONGO_URI', 'mongodb://localhost:27017/terra_db')
 
 try:
     print("Connecting to MongoDB Atlas...")
